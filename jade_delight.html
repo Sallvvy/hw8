@@ -1,0 +1,337 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Jade Delight</title>
+<style type="text/css">
+	/*lname, phone */
+	.errMsg1 {
+		color: #D20E11; display:none;	
+	}
+	.errMsg1.showme1 {
+		display:inline-block;
+	}
+	/*street, city*/
+	.address {
+		display: none;
+	}
+	.address.showme2 {
+		display:block;
+	}
+	.errMsg2 {
+		color: #D20E11; display:none;	
+	}
+	.errMsg2.showme3 {
+		display:inline-block;
+	}
+</style>
+</head>
+
+<body>
+<script src="https://code.jquery.com/jquery-3.6.0.js"
+  integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk="
+  crossorigin="anonymous"></script>
+	
+<script language="javascript">
+
+function MenuItem(name, cost)
+{
+	this.name = name;
+	this.cost=cost;
+}
+
+menuItems = new Array(
+	new MenuItem("Chicken Chop Suey", 4.5),
+	new MenuItem("Sweet and Sour Pork", 6.25),
+	new MenuItem("Shrimp Lo Mein", 5.25),
+	new MenuItem("Moo Shi Chicken", 6.5),
+	new MenuItem("Fried Rice", 2.35)
+);
+
+function makeSelect(name, minRange, maxRange)
+{
+	var t= "";
+	t = "<select name='" + name + "' size='1'>";
+	for (j=minRange; j<=maxRange; j++)
+	   t += "<option>" + j + "</option>";
+	t+= "</select>"; 
+	return t;
+}
+</script>
+
+<h1>Jade Delight</h1>
+<form>
+
+<p>First Name: <input type="text"  name="fname" /></p>
+<p>Last Name*:  <input type="text"  name="lname" /></p>
+<div id="errLName" class="errMsg1">*Name is required</div>
+	
+<p class="address">Street*: <input type="text" name="street" /></p>
+<div id="errStreet" class="errMsg2">*Street is required</div>
+	
+<p class="address">City*: <input type="text"  name="city" /></p>
+<div id="errCity" class="errMsg2">*City is required</div>
+	
+<p>Phone*: <input type="text"  name="phone" /></p>
+<div id="errPhone" class="errMsg1">*Phone is required</div>
+<p> 
+	<input type="radio"  name="p_or_d" value = "pickup" checked="checked"/>Pickup  
+	<input type="radio"  name="p_or_d" value = "delivery"/>
+	Delivery
+</p>
+<table border="0" id="table" cellpadding="3">
+  <tr>
+    <th>Select Item</th>
+    <th>Item Name</th>
+    <th>Cost Each</th>
+    <th>Total Cost</th>
+  </tr>
+	
+<script language="javascript">
+
+  var s = "";
+  for (i=0; i< menuItems.length; i++)
+  {
+	  s += "<tr><td>";
+	  s += makeSelect("quan" + i, 0, 10);
+	  s += "</td><td>" + menuItems[i].name + "</td>";
+	  s += "<td> $ " + menuItems[i].cost.toFixed(2) + "</td>";
+	  s += "<td>$<input type='text' name='cost'/></td></tr>";
+  }
+  document.writeln(s);
+</script>
+	
+</table>
+<p>Subtotal: 
+   $<input type="text"  name="subtotal" id="subtotal" />
+</p>
+<p>Mass tax 6.25%:
+  $ <input type="text"  name="tax" id="tax" />
+</p>
+<p>Total: $ <input type="text"  name="total" id="total" />
+</p>
+
+<input type = "button" id="btn" value = "Submit Order" />
+
+<script>
+	$(document).ready(function(){
+		//displays address boxes if delivery, and removes otherwise
+		POrD();
+		
+		//calculates everything when changes are made
+		var items = new Array(0);
+		calc(items);
+		//alert(items.length);
+		
+		//onsbmit
+		$("#btn").click(function(){
+			
+			//check if delivery
+			isD=false;
+			if ($("input[name='p_or_d']:checked").val()=="delivery")
+				isD=true;
+			//alert(isD);
+			
+			//validate
+			err=validate(isD);
+			//alert("err: "+err);
+			
+			//display order info in a separate window if no error
+			if (!err){
+				//calculate estimated pickup/delivery time
+				t = time(isD);
+								
+				//opens new window
+				var win = window.open();
+				win.document.write("Thanks for ordering! <br/>");
+				win.document.write("<br>");
+				
+				//displays ordered items
+				win.document.write("Ordered items: <br>");
+				
+				for (i=0; i<items.length; i++){
+					win.document.write(" - " + items[i] + "<br/>");
+				}
+				win.document.write("<br>");
+				
+				//displays total
+				total = $("#total").val();
+				win.document.write("Total: $" + total + "<br/>");
+				win.document.write("<br>");
+				
+				//display estimated pickup/delivery time
+				if(isD)
+					win.document.write("Estimated delivery time: " + t);
+				else
+					win.document.write("Estimated pickup time: " + t);
+			}
+		});
+	})
+	
+	//calculates everything, responsive to changes, records items ordered
+	function calc(items){
+		$("select").change(function(){
+			items.length=0;
+			calc_cost(items);
+		});
+	}
+	
+	//calculates cost of each item based on quantity, and total accordingly
+	function calc_cost(items){
+		var costs = new Array(0);
+		for (i=0; i<menuItems.length; i++){
+			quant=parseInt($("select[name='quan"+i+"']").val());
+			//alert(quant);
+			//store ordered items
+			if (quant!=0){
+				items.push(menuItems[i].name);
+			}
+			
+			price = menuItems[i].cost.toFixed(2);
+			cost = quant*price;
+			cost = cost.toFixed(2);
+			//alert(cost);
+			costs.push(cost);
+			//quant=parseInt($("select[name="quan"+i]").val());
+			//alert("quant: " + quant);
+		}
+		//write costs to textbox
+		i=-1;
+		$("table tr").each(function() {
+			$("td", this).find("input[name=cost]").val(costs[i]);
+			i++;
+		});
+		calc_total(costs);
+	}
+	
+	//calculates subtotal, tax, and total
+	function calc_total(costs){
+		//loop through each row in table to find the cost input container, sum up all costs
+		var total = 0;
+		for (i=0; i<costs.length; i++) {
+			total+=parseFloat(costs[i]);
+			//alert(total);
+		}
+		
+		//write to total container
+		$("#subtotal").val(total.toFixed(2));
+		tax=total*0.0625;
+		$("#tax").val(tax.toFixed(2));
+		tot=total*1.0625;
+		$("#total").val(tot.toFixed(2));
+	}
+
+		
+	// calculate estimated time, makes changes to the boolean, returns the timestamp
+	function time(isD){
+		//alert("in time");
+		var d = new Date();
+		//alert(d);
+		if(isD){
+			//alert("calc delivery time");
+			d.setMinutes(d.getMinutes()+30);
+			hr=d.getHours();
+			hr=hr<10?'0'+hr:''+hr;
+			min=d.getMinutes();
+			min=min<10?'0'+min:''+min;
+			d = hr + ":" + min;
+			//alert("Estimated delivery time: "+ d);
+		}
+		else{
+			//alert("calc pickup time");
+			d.setMinutes(d.getMinutes()+15);
+			hr=d.getHours();
+			hr=hr<10?'0'+hr:''+hr;
+			min=d.getMinutes();
+			min=min<10?'0'+min:''+min;
+			d = hr + ":" + min;
+			//alert("Estimated pickup time: "+ d);
+		}
+		return d;
+	}
+	
+	
+	// validates, and changes the boolean
+	function validate(isD)
+	{
+		err=false;
+		//alert("inside validate");
+		$(".errMsg1").removeClass("showme1");
+		
+		//validate last name
+		if ($("input[name=lname]").val()==""){
+			//alert("error: no lname");
+			err=true;
+			$("#errLName").addClass("showme1");
+		}
+		//validate phone
+		if ($("input[name=phone]").val()==""){
+			err=true;
+			//alert("error: no phone");
+			$("#errPhone").addClass("showme1");
+		}
+		
+		// validate address if delivery
+		if (isD){
+			//alert("delivery, check address");
+			err = checkAddress();
+			//alert("Err: " + err);
+		}
+		
+		//validate whether at least one item ordered, only if no other errors
+		if(!err){
+			if ($("#total").val()=="0.00" || $("#total").val()==""){
+			err=true;
+			//alert("error: no item");
+			//alert("total: "+$("#total").val());
+			alert("Please select at least one item.");
+			}
+		}
+		
+		return err;
+		
+	}
+	
+	// whether pickup or delivery, changes global variable isD
+	function POrD(){
+		//alert("in POrD");
+		$("input[name=p_or_d]").change(function(){
+			if ($(this).val()=="delivery"){
+				//alert("is delivery");
+				$(".address").addClass("showme2");
+			}
+		});
+		$("input[name=p_or_d]").change(function(){
+			if ($(this).val()=="pickup"){
+				$(".address").removeClass("showme2");
+				$(".errMsg2").removeClass("showme3");
+			};
+		});
+		
+	}
+	
+	//validate street, city, if delivery
+	function checkAddress(){
+		err=false;
+		//alert("checkAddress");
+		$(".errMsg2").removeClass("showme3");
+		
+		//validate street
+		if ($("input[name=street]").val()==""){
+			//alert("no street");
+			$("#errStreet").addClass("showme3");
+			err=true;
+		}
+		//validate city
+		if ($("input[name=city]").val()==""){
+			//alert("no city");
+			err=true;
+			$("#errCity").addClass("showme3");
+		}
+		return err;
+	}
+</script>
+	
+</form>
+</body>
+</html>
